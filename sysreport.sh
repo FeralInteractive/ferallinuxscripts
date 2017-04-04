@@ -96,6 +96,7 @@ textarea {
 <h3>Contents</h3>
 <p>
 <a href=\"#programs\">Program Outputs</a><br>
+<a href=\"#graphics\">Program Outputs</a><br>
 <a href=\"#system\">System Files</a><br>
 <a href=\"#installed\">Installed Files</a><br>
 <a href=\"#preferences\">Preferences</a><br>" > "$OUTFILE"
@@ -110,14 +111,10 @@ echo "</p>" >> "$OUTFILE"
 # --------------------------------------------------------------------------------
 # "uname -a"           - System and kernel version info
 # "lsb_release -a"     - More specific system info
-# "nvidia-smi"         - Current GPU stats on nvidia
-# "fglrxinfo"          - Current GPU stats on amd
 # "lspci -v"           - Info on current hardware
 # "lsusb -v"           - Info on USB devices
 # "env"                - Check against steam runtime enviroment to catch oddities
 # "top -b -n 1"        - Running processes (useful to detect CPU/GPU hogs or zombie processes)
-# "glxinfo"            - Detailed opengl information
-# "vulkaninfo"         - Detailed vulkan information
 # "setxkbmap -query"   - Information on current keyboard map/modes
 # "curl-config --ca"   - Location of the certificates bundle
 # "cat $CPUFILES"      - Show CPU governor setting
@@ -125,15 +122,11 @@ CPUFILES="/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor"
 echo "<hr><h2 id=\"programs\">Program Outputs</h2>" >> "$OUTFILE"
 set -- "uname -a" \
 	"lsb_release -a" \
-	"nvidia-smi" \
-	"fglrxinfo" \
 	"xrandr" \
 	"lspci -v" \
 	"lsusb -v" \
 	"env" \
 	"top -b -n 1" \
-	"glxinfo" \
-	"vulkaninfo" \
 	"setxkbmap -query" \
 	"curl-config --ca" \
 	"cat ${CPUFILES}"
@@ -147,6 +140,26 @@ for CMD do
 	echo "</textarea>" >> "$OUTFILE"
 done
 
+
+# --------------------------------------------------------------------------------
+# "glxinfo"            - Detailed opengl information
+# "vulkaninfo"         - Detailed vulkan information
+# "nvidia-smi"         - Current GPU stats on nvidia
+# "fglrxinfo"          - Current GPU stats on amd
+echo "<hr><h2 id=\"graphics\">Graphics Information</h2>" >> "$OUTFILE"
+set -- "glxinfo" \
+	"vulkaninfo" \
+	"nvidia-smi" \
+	"fglrxinfo"
+for CMD do
+	output_text "$CMD"
+	echo "${TEXT_AREA}" >> "$OUTFILE"
+	$CMD 2>&1 | head -n 10000 | tee -a "$OUTFILE" | 
+	if [ "$(wc -l)" = "10000" ]; then 
+		echo "...truncated..." >> "$OUTFILE" 
+	fi
+	echo "</textarea>" >> "$OUTFILE"
+done
 
 # --------------------------------------------------------------------------------
 # "/etc/*-release"                   - Info on system release version
