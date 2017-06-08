@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.1.1
+# Version 2.2.1
 
 # If you have useful edits made for unsupported distros then please
 # let us know at <linuxscriptsuggestions@feralinteractive.com>
@@ -40,6 +40,7 @@ while [ $# -gt 0 ]; do
 	case ${arg} in
 		--fresh-prefs)   FERAL_FRESH_PREFERENCES=1  && shift ;;
 		--system-asound) FERAL_SYSTEM_ASOUND=1      && shift ;;
+		--log-to-file)   FERAL_LOG_TO_FILE=1        && shift ;;
 		--version)       FERAL_GET_VERSION=1        && shift ;;
 		*) break ;;
 	esac
@@ -47,6 +48,16 @@ done
 
 # ====================================================================
 # Options
+
+# Always do this first
+if [ "${FERAL_LOG_TO_FILE}" = 1 ]; then
+	LOGFILE="${GAMEPREFS}/${FERAL_GAME_NAME}_log.txt"
+	echo "Logging all output to \"${LOGFILE}\"..."
+	exec 1>> "${LOGFILE}" 2>&1
+	echo "==="
+	echo "log for $(date)"
+	echo "==="
+fi
 
 # Automatically backup old preferences and start fresh on launch
 if [ "${FERAL_FRESH_PREFERENCES}" = 1 ]; then
