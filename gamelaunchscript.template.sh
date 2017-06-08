@@ -12,10 +12,10 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.2.1
+# Version 2.2.2
 
 # If you have useful edits made for unsupported distros then please
-# let us know at <linuxscriptsuggestions@feralinteractive.com>
+# visit <https://github.com/FeralInteractive/ferallinuxscripts>
 
 # Extra note: Steam's STEAM_RUNTIME_PREFER_HOST_LIBRARIES can now be
 # used to control which libraries it'll use
