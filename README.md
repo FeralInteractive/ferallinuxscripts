@@ -28,10 +28,12 @@ It requires a few dependent game-specific scripts that are distributed with our 
 * config/steam-check.sh - Used to check if the game is launched correctly from steam
 * config/extra-environment.sh - Used to set anything extra, usually blank
 
-Contributions
+Issues
 ------
 
-If you have anything to add to these scripts, or have feedback about what can be changed, then please fork and make a pull request, we'll take a look.
+We spend a good deal of time trying to make sure our games will work on a wide variety of Linux distributions, but some issues may still occur. Feel free to use the Issues tracker in this repository to report any problems that we can fix by making adjustments to these scripts or, alternatively, submit a pull request.
+
+Any other general issues with Feral games should, as always, be reported directly to support@feralinteractive.com.
 
 License
 ------
