@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.2.2
+# Version 2.3.0
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
@@ -32,6 +32,35 @@ GAMEROOT="$(sh -c "cd \"${0%/*}\" && echo \"\$PWD\"")"
 # The game's preferences directory
 GAMEPREFS="$HOME/.local/share/feral-interactive/${FERAL_GAME_NAME_FULL}"
 
+# ====================================================================
+# Helper functions
+
+# Show a message box.
+ShowMessage()
+{
+	MESSAGE_TITLE="$1"
+	MESSAGE_BODY="$2"
+
+	echo "=== ${MESSAGE_TITLE}"
+	echo "${MESSAGE_BODY}"
+
+	MESSAGE_BINARY="${GAMEROOT}/bin/FeralLinuxMessage"
+	if [ -x "${MESSAGE_BINARY}" ]; then
+		MESSAGE_BUTTON="OK"
+		MESSAGE_ICON="${GAMEROOT}/share/icons/GameIcon_16x16x32.png"
+		MESSAGE_FONT="${GAMEROOT}/share/NotoSans-Regular.ttf"
+		MESSAGE_DEVICES="${GAMEROOT}/share/inputdevices.json"
+
+		ORIG_LD_PRELOAD="${LD_PRELOAD}"
+		unset LD_PRELOAD
+		"${MESSAGE_BINARY}" "${MESSAGE_TITLE}" "${MESSAGE_ICON}" "${MESSAGE_BODY}" "${MESSAGE_FONT}" "${MESSAGE_DEVICES}" 1 2 1 "${MESSAGE_BUTTON}"
+		export LD_PRELOAD="${ORIG_LD_PRELOAD}"
+	fi
+}
+
+# ====================================================================
+# Options
+
 # Check for arguments
 # Note: some of these can be set at a system level to override for
 # all Feral games
@@ -45,9 +74,6 @@ while [ $# -gt 0 ]; do
 		*) break ;;
 	esac
 done
-
-# ====================================================================
-# Options
 
 # Always do this first
 if [ "${FERAL_LOG_TO_FILE}" = 1 ]; then
@@ -192,6 +218,53 @@ if command -v ldd > /dev/null; then
 		rm "${GAME_LDD_LOGFILE}_missing.txt"
 	fi
 	rm "${GAME_LDD_LOGFILE}.txt"
+fi
+
+# Identify whether we have an NVIDIA driver installation that can cause the
+# game to crash. This happens when the non-GLVND version of the GL driver is
+# installed, but the Vulkan ICD path points to the GLVND version. This
+# happens due to a bug in NVIDIA's installer, which made its way into the
+# Debian driver packages.
+#
+# For more details, see:
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=864477
+
+DRIVER_MESSAGE_TITLE="Driver installation issue"
+DRIVER_MESSAGE_BODY="Your NVIDIA driver installation has an issue which may cause the game to crash.
+
+If this happens, you will need to install the GLVND version of the driver. On Debian/SteamOS, this can be done by
+installing the libgl1-nvidia-glvnd-glx package. Using NVIDIA's installer, the GLVND version should be installed by default.
+
+For more details, see https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=864477"
+
+# ldconfig may be in sbin which may not be in the default PATH. We don't
+# actually need root just to print its cache.
+ORIG_PATH="${PATH}"
+export PATH="/sbin:/usr/sbin:${PATH}"
+
+# Find out what libGL we will be using.
+LIBGL_PATH=$(ldconfig -p | grep libGL.so.1 | head -n 1 | sed "s/.*=> //g")
+LIBGL_TARGET=$(readlink -f "${LIBGL_PATH}")
+
+export PATH=$ORIG_PATH
+
+# Check if it looks like a non-GLVND NVIDIA libGL based on the version number.
+# For non-GLVND the file name looks like e.g. libGL.so.375.66
+if echo "${LIBGL_TARGET}" | grep -q "\.so\.[0-9][0-9][0-9]\.[0-9][0-9]"; then
+	# It's a non-GLVND installation. Check the Vulkan ICD path.
+	if [ -e /etc/vulkan/icd.d/nvidia_icd.json ]; then
+		VULKAN_ICD_JSON=/etc/vulkan/icd.d/nvidia_icd.json
+	elif [ -e /usr/share/vulkan/icd.d/nvidia_icd.json ]; then
+		VULKAN_ICD_JSON=/usr/share/vulkan/icd.d/nvidia_icd.json
+	fi
+
+	if [ -n "${VULKAN_ICD_JSON}" ]; then
+		# If it points to libGLX_nvidia.so.0 then this will probably cause a
+		# crash.
+		if grep -q "libGLX_nvidia.so.0" "${VULKAN_ICD_JSON}"; then
+			ShowMessage "${DRIVER_MESSAGE_TITLE}" "${DRIVER_MESSAGE_BODY}"
+		fi
+	fi
 fi
 
 # ====================================================================
