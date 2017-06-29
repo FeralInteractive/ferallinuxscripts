@@ -3,6 +3,13 @@ Feral Linux Scripts
 
 This repository allows public access to the latest versions of some of the scripts used by Feral Interactive games on Linux.
 
+Issues
+------
+
+We spend a good deal of time trying to make sure our games will work on a wide variety of Linux distributions, but some issues may still occur. Feel free to use the Issues tracker in this repository to report any problems that we can fix by making adjustments to these scripts or, alternatively, submit a pull request.
+
+Any other general issues with Feral games should, as always, be reported directly to support@feralinteractive.com.
+
 Scripts
 ------
 
@@ -22,18 +29,15 @@ Usage looks like:
 
 This is the template we use for our game launch scripts. It allows us to fix up the environment as needed to assist with running our games on a wide variety of Linux distributions.
 
-It requires a few dependent game-specific scripts that are distributed with our games:
+It requires a configuration script
 
-* config/game-settings.sh - To set up some game specific variables
-* config/steam-check.sh - Used to check if the game is launched correctly from steam
-* config/extra-environment.sh - Used to set anything extra, usually blank
+* config/game-settings.sh - To set up some game specific configuration variables
 
-Issues
-------
+And optionally uses a set of other helper scripts that may be different per game
 
-We spend a good deal of time trying to make sure our games will work on a wide variety of Linux distributions, but some issues may still occur. Feel free to use the Issues tracker in this repository to report any problems that we can fix by making adjustments to these scripts or, alternatively, submit a pull request.
-
-Any other general issues with Feral games should, as always, be reported directly to support@feralinteractive.com.
+* config/steam-check.sh - Used to check if the game is launched in the steam runtime
+* config/game-chooser.sh - Allows choosing which game binary to launch in some cases
+* config/extra-environment.sh - Used to set any extra environment variables
 
 License
 ------

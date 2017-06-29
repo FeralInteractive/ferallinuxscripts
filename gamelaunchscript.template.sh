@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.3.0
+# Version 2.4.0
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
@@ -24,13 +24,16 @@
 
 # 'Magic' to get the game root
 GAMEROOT="$(sh -c "cd \"${0%/*}\" && echo \"\$PWD\"")"
+FERAL_CONFIG="${GAMEROOT}/config"
 
 # Pull in game specific variables
+# This is required - we'll fail without it
 # shellcheck source=config/game-settings.sh
-. "${GAMEROOT}/config/game-settings.sh"
+. "${FERAL_CONFIG}/game-settings.sh"
 
 # The game's preferences directory
-GAMEPREFS="$HOME/.local/share/feral-interactive/${FERAL_GAME_NAME_FULL}"
+if [ -z "${FERAL_PREFERENCES_DIR}" ]; then FERAL_PREFERENCES_DIR="feral-interactive/${FERAL_GAME_NAME_FULL}"; fi
+GAMEPREFS="$HOME/.local/share/${FERAL_PREFERENCES_DIR}"
 
 # ====================================================================
 # Helper functions
@@ -107,9 +110,9 @@ fi
 # expected to work perfectly when run outside of it
 # However on some distributions (Arch Linux/openSUSE etc.) users have
 # had better luck using their own libs
-# Remove the line below if testing that
+# Remove the steam-check.sh file if testing that
 # shellcheck source=config/steam-check.sh
-. "${GAMEROOT}/config/steam-check.sh"
+test -f "${FERAL_CONFIG}/steam-check.sh" && . "${FERAL_CONFIG}/steam-check.sh"
 
 # ====================================================================
 # Set the steam appid if not set
@@ -198,7 +201,7 @@ fi
 # Sometimes games may need an extra set of variables
 # Let's pull those in
 # shellcheck source=config/extra-environment.sh
-. "${GAMEROOT}/config/extra-environment.sh"
+test -f "${FERAL_CONFIG}/extra-environment.sh" && . "${FERAL_CONFIG}/extra-environment.sh"
 
 # Add our additionals and the old preload back
 LD_PRELOAD="${LD_PRELOAD_ADDITIONS}:${SYSTEM_LD_PRELOAD}"
@@ -266,6 +269,11 @@ if echo "${LIBGL_TARGET}" | grep -q "\.so\.[0-9][0-9][0-9]\.[0-9][0-9]"; then
 		fi
 	fi
 fi
+
+# ====================================================================
+# Source in the game chooser if it exists
+# shellcheck source=config/game-chooser.sh
+test -f "${FERAL_CONFIG}/game-chooser.sh" && . "${FERAL_CONFIG}/game-chooser.sh"
 
 # ====================================================================
 # Run the game
