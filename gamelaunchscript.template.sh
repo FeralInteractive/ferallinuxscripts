@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.4.0
+# Version 2.5.0
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
@@ -55,8 +55,12 @@ ShowMessage()
 		MESSAGE_DEVICES="${GAMEROOT}/share/inputdevices.json"
 
 		ORIG_LD_PRELOAD="${LD_PRELOAD}"
-		unset LD_PRELOAD
+		if ! grep -q steamos /etc/os-release; then
+			unset LD_PRELOAD
+		fi
+
 		"${MESSAGE_BINARY}" "${MESSAGE_TITLE}" "${MESSAGE_ICON}" "${MESSAGE_BODY}" "${MESSAGE_FONT}" "${MESSAGE_DEVICES}" 1 2 1 "${MESSAGE_BUTTON}"
+
 		export LD_PRELOAD="${ORIG_LD_PRELOAD}"
 	fi
 }
@@ -268,6 +272,15 @@ if echo "${LIBGL_TARGET}" | grep -q "\.so\.[0-9][0-9][0-9]\.[0-9][0-9]"; then
 			ShowMessage "${DRIVER_MESSAGE_TITLE}" "${DRIVER_MESSAGE_BODY}"
 		fi
 	fi
+fi
+
+# Legacy support: Replace the older PS4 mapping with the newer one if we're running a new enough kernel
+# See https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/drivers/hid/hid-sony.c?id=ac797b95f53276c132c51d53437e38dd912413d7
+KERNEL=$(uname -r)
+KERNEL_MAJOR=$(echo "$KERNEL" | cut -d. -f1)
+KERNEL_MINOR=$(echo "$KERNEL" | cut -d. -f2)
+if [ "$KERNEL_MAJOR" -gt 4 ] || [ "$KERNEL_MAJOR" = 4 ] && [ "$KERNEL_MINOR" -gt 9 ]; then
+	sed -i "s/a:b1,b:b2,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a4,rightx:a2,righty:a5,start:b9,x:b0,y:b3/a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12,righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2/" "${GAMEROOT}/share/inputdevices.json"
 fi
 
 # ====================================================================
