@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.5.0
+# Version 2.5.1
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
