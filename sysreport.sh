@@ -21,8 +21,9 @@
 ## drivers
 ## environment
 ## running programs
-## intalled game files
+## installed game files
 ## feral preference files
+## crash dumps
 #
 # If you're unhappy sharing any of this information then feel
 # free to remove it from the output when sending the file over
@@ -99,7 +100,8 @@ textarea {
 <a href=\"#graphics\">Program Outputs</a><br>
 <a href=\"#system\">System Files</a><br>
 <a href=\"#installed\">Installed Files</a><br>
-<a href=\"#preferences\">Preferences</a><br>" > "$OUTFILE"
+<a href=\"#preferences\">Preferences</a><br>
+<a href=\"#crashes\">Crashes</a><br>" > "$OUTFILE"
 
 # Add a tag for steam DLC info if we're appending it to the end
 if [ "$PGOW_APPEND" = "1" ]; then
@@ -113,7 +115,7 @@ echo "</p>" >> "$OUTFILE"
 # "lsb_release -a"     - More specific system info
 # "lspci -v"           - Info on current hardware
 # "lsusb -v"           - Info on USB devices
-# "env"                - Check against steam runtime enviroment to catch oddities
+# "env"                - Check against steam runtime environment to catch oddities
 # "top -b -n 1"        - Running processes (useful to detect CPU/GPU hogs or zombie processes)
 # "setxkbmap -query"   - Information on current keyboard map/modes
 # "curl-config --ca"   - Location of the certificates bundle
@@ -232,6 +234,28 @@ do
 		then echo "...truncated..." >> "$OUTFILE"
 	fi
 	echo "</textarea>" >> "$OUTFILE"
+done
+
+
+# --------------------------------------------------------------------------------
+# "$FERAL_PREFS/*/crashes"       - Crash dumps
+echo "<hr><h2 id=\"crashes\">Crashes</h2>" >> "$OUTFILE"
+cd "$FERAL_PREFS" || exit
+for FILE in */crashes/*.dmp
+do
+	# Ignore old crash logs. They can make the report too big to email
+	# easily if there are too many of them, and they may no longer be
+	# relevant given software updates.
+	[[ $(date +%s -r "$FILE") -lt $(date +%s --date="2 weeks ago") ]] && continue
+
+	output_text "'$FILE' in '$FERAL_PREFS'"
+	echo "<a download=\""$(basename "$FILE")"\"">> "$OUTFILE"
+	echo "href=\"data:application/x-dmp; charset=binary;base64," >> "$OUTFILE"
+	base64 -w1024 "$FILE" >> "$OUTFILE"
+	echo "\">" >> "$OUTFILE"
+	date -I'minutes' -r "$FILE" >> "$OUTFILE"
+	basename "$FILE" .dmp >> "$OUTFILE"
+	echo "</a><br>" >> "$OUTFILE"
 done
 
 # --------------------------------------------------------------------------------
