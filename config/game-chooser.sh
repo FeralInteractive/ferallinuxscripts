@@ -11,11 +11,7 @@ else
 		fi
 	done
 
-	# Otherwise, if we're a terminal, ask the user
-	if [ -t 0 ] && [ ${#CHOICES[@]} -gt 1  ]; then
-		echo "Choose which game to launch: ${CHOICES[*]}"
-		read CHOICE
-		((CHOICE--))
-		FERAL_GAME_NAME="${CHOICES[$CHOICE]}"
+	if [ ${#CHOICES[@]} -eq 1  ]; then
+		FERAL_GAME_NAME="${CHOICES}"
 	fi
 fi
