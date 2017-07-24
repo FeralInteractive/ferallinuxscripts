@@ -284,8 +284,14 @@ fi
 KERNEL=$(uname -r)
 KERNEL_MAJOR=$(echo "$KERNEL" | cut -d. -f1)
 KERNEL_MINOR=$(echo "$KERNEL" | cut -d. -f2)
+OLD_MAPPING="a:b1,b:b2,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a4,rightx:a2,righty:a5,start:b9,x:b0,y:b3"
+NEW_MAPPING="a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12,righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2"
 if [ "$KERNEL_MAJOR" -gt 4 ] || [ "$KERNEL_MAJOR" = 4 ] && [ "$KERNEL_MINOR" -gt 9 ]; then
-	sed -i "s/a:b1,b:b2,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a4,rightx:a2,righty:a5,start:b9,x:b0,y:b3/a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12,righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2/" "${GAMEROOT}/share/inputdevices.json"
+	if [ -e "${GAMEROOT}/share/inputdevices.json" ]; then
+		sed -i "s/${OLD_MAPPING}/${NEW_MAPPING}/g" "${GAMEROOT}/share/inputdevices.json"
+	elif [ -e "${GAMEROOT}/share/controllermapping.txt" ]; then
+		sed -i "s/${OLD_MAPPING}/${NEW_MAPPING}/g" "${GAMEROOT}/share/controllermapping.txt"
+	fi
 fi
 
 # ====================================================================
