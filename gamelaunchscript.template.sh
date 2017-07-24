@@ -212,6 +212,11 @@ LD_PRELOAD="${LD_PRELOAD_ADDITIONS}:${SYSTEM_LD_PRELOAD}"
 export LD_PRELOAD
 
 # ====================================================================
+# Source in the game chooser if it exists
+# shellcheck source=config/game-chooser.sh
+test -f "${FERAL_CONFIG}/game-chooser.sh" && . "${FERAL_CONFIG}/game-chooser.sh"
+
+# ====================================================================
 # Try and detect some common problems and show useful messages
 # First check the dynamic linker
 GAME_LDD_LOGFILE=/tmp/${FERAL_GAME_NAME}_ldd_log
@@ -282,11 +287,6 @@ KERNEL_MINOR=$(echo "$KERNEL" | cut -d. -f2)
 if [ "$KERNEL_MAJOR" -gt 4 ] || [ "$KERNEL_MAJOR" = 4 ] && [ "$KERNEL_MINOR" -gt 9 ]; then
 	sed -i "s/a:b1,b:b2,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a4,rightx:a2,righty:a5,start:b9,x:b0,y:b3/a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12,righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2/" "${GAMEROOT}/share/inputdevices.json"
 fi
-
-# ====================================================================
-# Source in the game chooser if it exists
-# shellcheck source=config/game-chooser.sh
-test -f "${FERAL_CONFIG}/game-chooser.sh" && . "${FERAL_CONFIG}/game-chooser.sh"
 
 # ====================================================================
 # Run the game
