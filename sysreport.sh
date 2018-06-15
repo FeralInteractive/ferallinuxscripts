@@ -129,36 +129,39 @@ set -- "uname -a" \
 	"lsusb -v" \
 	"env" \
 	"top -b -n 1" \
+	"mount" \
+	"dmesg" \
+	"df -h" \
 	"setxkbmap -query" \
 	"curl-config --ca" \
 	"cat ${CPUFILES}"
 for CMD do
 	output_text "$CMD"
 	echo "${TEXT_AREA}" >> "$OUTFILE"
-	$CMD 2>&1 | head -n 500 | tee -a "$OUTFILE" | 
-	if [ "$(wc -l)" = "500" ]; then 
-		echo "...truncated..." >> "$OUTFILE" 
+	$CMD 2>&1 | tail -n 1000 | tee -a "$OUTFILE" | 
+	if [ "$(wc -l)" = "1000" ]; then 
+		echo "...truncated to last 1000 lines..." >> "$OUTFILE" 
 	fi
 	echo "</textarea>" >> "$OUTFILE"
 done
 
 
 # --------------------------------------------------------------------------------
-# "glxinfo"            - Detailed opengl information
+# "glxinfo -l"         - Detailed opengl information
 # "vulkaninfo"         - Detailed vulkan information
 # "nvidia-smi"         - Current GPU stats on nvidia
 # "fglrxinfo"          - Current GPU stats on amd
 echo "<hr><h2 id=\"graphics\">Graphics Information</h2>" >> "$OUTFILE"
-set -- "glxinfo" \
+set -- "glxinfo -l" \
 	"vulkaninfo" \
 	"nvidia-smi" \
 	"fglrxinfo"
 for CMD do
 	output_text "$CMD"
 	echo "${TEXT_AREA}" >> "$OUTFILE"
-	$CMD 2>&1 | head -n 10000 | tee -a "$OUTFILE" | 
+	$CMD 2>&1 | tail -n 10000 | tee -a "$OUTFILE" | 
 	if [ "$(wc -l)" = "10000" ]; then 
-		echo "...truncated..." >> "$OUTFILE" 
+		echo "...truncated to first 10000 lines..." >> "$OUTFILE" 
 	fi
 	echo "</textarea>" >> "$OUTFILE"
 done
@@ -241,7 +244,7 @@ done
 # "$FERAL_PREFS/*/crashes"       - Crash dumps
 echo "<hr><h2 id=\"crashes\">Crashes</h2>" >> "$OUTFILE"
 cd "$FERAL_PREFS" || exit
-for FILE in */crashes/*.dmp
+for FILE in */crashes/*.dmp */crashes/archived/*.dmp
 do
 	# Ignore old crash logs. They can make the report too big to email
 	# easily if there are too many of them, and they may no longer be

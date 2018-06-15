@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.5.1
+# Version 2.9.0
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
@@ -74,10 +74,13 @@ ShowMessage()
 while [ $# -gt 0 ]; do
 	arg=$1
 	case ${arg} in
-		--fresh-prefs)   FERAL_FRESH_PREFERENCES=1  && shift ;;
-		--system-asound) FERAL_SYSTEM_ASOUND=1      && shift ;;
-		--log-to-file)   FERAL_LOG_TO_FILE=1        && shift ;;
-		--version)       FERAL_GET_VERSION=1        && shift ;;
+		--fresh-prefs)            FERAL_FRESH_PREFERENCES=1      && shift ;;
+		--system-asound)          FERAL_SYSTEM_ASOUND=1          && shift ;;
+		--clear-system-gl-caches) FERAL_CLEAR_SYSTEM_GL_CACHES=1 && shift ;;
+		--log-to-file)            FERAL_LOG_TO_FILE=1            && shift ;;
+		--run-from-steam)         FERAL_RUN_FROM_STEAM=1         && shift ;;
+		--renderdoc)              FERAL_USE_RENDERDOC=1          && shift ;;
+		--version)                FERAL_GET_VERSION=1            && shift ;;
 		*) break ;;
 	esac
 done
@@ -109,6 +112,13 @@ if [ "${FERAL_GET_VERSION}" = 1 ]; then
 	exit
 fi
 
+
+# ====================================================================
+# Ensure we pass the steam check, before we inherit the enviroment below
+if [ "${FERAL_RUN_FROM_STEAM}" = 1 ]; then
+	STEAM_RUNTIME=1
+fi
+
 # ====================================================================
 # Our games are compiled targeting the steam runtime and are not
 # expected to work perfectly when run outside of it
@@ -123,8 +133,17 @@ test -f "${FERAL_CONFIG}/steam-check.sh" && . "${FERAL_CONFIG}/steam-check.sh"
 if [ "${SteamAppId}" != "${FERAL_GAME_STEAMID}" ]; then
 	SteamAppId="${FERAL_GAME_STEAMID}"
 	GameAppId="${FERAL_GAME_STEAMID}"
+	SteamGameId="${FERAL_GAME_STEAMID}"
 	export SteamAppId
 	export GameAppId
+	export SteamGameId
+fi
+
+# ====================================================================
+# Inherit the steam-runtime from a script if asked
+# Requires a script that can set up the steam-runtime at bin/feralrunfromsteam
+if [ "${FERAL_RUN_FROM_STEAM}" = 1 ]; then
+	source "${GAMEROOT}/bin/feralrunfromsteam"
 fi
 
 # ====================================================================
@@ -153,8 +172,10 @@ HAS_CURL="$(sh -c "command -v curl-config")"
 if [ -n "${HAS_CURL}" ]; then
 	SSL_CERT_FILE="$(curl-config --ca)"
 	export SSL_CERT_FILE
-else
-	# Otherwise try with guess work
+fi
+
+# Otherwise try with guess work
+if [ -z "$SSL_CERT_FILE" ]; then
 	if [ -e /etc/ssl/certs/ca-certificates.crt ]; then
 		SSL_CERT_FILE="/etc/ssl/certs/ca-certificates.crt"
 		export SSL_CERT_FILE
@@ -172,13 +193,83 @@ if [ -n "${HAS_OPENSSL}" ]; then
 	export SSL_CERT_DIR
 fi
 
-# Move the driver shader cache to our preferences
+# Use a directory in our preferences for the Nvidia driver shader cache if not specified
+# We need to move this as our games go over the internal MB limit for the driver
+# cache when not placed in a custom location with __GL_SHADER_DISK_CACHE_PATH
 if [ -z "$__GL_SHADER_DISK_CACHE_PATH" ]; then
 	export __GL_SHADER_DISK_CACHE_PATH="${GAMEPREFS}/driver-gl-shader-cache"
 	# Avoid steam runtime libraries for mkdir
 	OLD_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
 	unset LD_LIBRARY_PATH
-	mkdir -p "${__GL_SHADER_DISK_CACHE_PATH}"
+		mkdir -p "${__GL_SHADER_DISK_CACHE_PATH}"
+	export LD_LIBRARY_PATH="${OLD_LD_LIBRARY_PATH}"
+fi
+
+# We also want to clear the caches if requested by the game
+# which can't do this during the normal execution as it is unsafe
+# To do this, the game will add a temp file for us to catch
+__FRL_TMP_FILE_CLEAR_GL_CACHES=/tmp/frl_clear_gl_caches
+if [ -f "${__FRL_TMP_FILE_CLEAR_GL_CACHES}" ]; then
+	rm "${__FRL_TMP_FILE_CLEAR_GL_CACHES}"
+	FERAL_CLEAR_SYSTEM_GL_CACHES=1
+fi
+
+# Clean out and remake the driver cache directory if requested
+# We need to do this before running the game as the driver won't react well
+# to the cache being pulled out from under it
+if [ "${FERAL_CLEAR_SYSTEM_GL_CACHES}" = 1 ]; then
+
+	# Avoid steam runtime libraries for rm and mkdir
+	OLD_LD_LIBRARY_PATH="${LD_LIBRARY_PATH}"
+	unset LD_LIBRARY_PATH
+
+		# Clear the Nvidia cache locations
+		# https://us.download.nvidia.com/XFree86/Linux-x86/384.59/README/openglenvvariables.html
+		if [ ! -z "${__GL_SHADER_DISK_CACHE_PATH}" ]; then
+			__NV_CACHE="${__GL_SHADER_DISK_CACHE_PATH}"
+		elif [ ! -z "${XDG_CACHE_HOME}" ]; then
+			__NV_CACHE="${XDG_CACHE_HOME}/.nv/GLCache"
+		else
+			__NV_CACHE="${HOME}/.nv/GLCache"
+		fi
+		if [ -d "${__NV_CACHE}" ]; then
+			echo "Clearing NVIDIA cache at \"${__NV_CACHE}\""
+			rm -r "${__NV_CACHE}"
+			mkdir -p "${__NV_CACHE}"
+		fi
+
+		# Clear Mesa GLSL cache, using directory search in src/util/disk_cache.c as of 2017-10-12.
+		# Note the directory name was renamed from "mesa" to "mesa_shader_cache" on 2017-08-24.
+		if [ ! -z "${MESA_GLSL_CACHE_DIR}" ]; then
+			__MESA_CACHE="${MESA_GLSL_CACHE_DIR}/mesa_shader_cache"
+			if [ ! -d "${__MESA_CACHE}" ]; then
+				__MESA_CACHE="${MESA_GLSL_CACHE_DIR}/mesa"
+			fi
+		elif [ ! -z "${XDG_CACHE_HOME}" ]; then
+			__MESA_CACHE="${XDG_CACHE_HOME}/mesa_shader_cache"
+			if [ ! -d "${__MESA_CACHE}" ]; then
+				__MESA_CACHE="${XDG_CACHE_HOME}/mesa"
+			fi
+		else
+			__MESA_CACHE="${HOME}/.cache/mesa_shader_cache"
+			if [ ! -d "${__MESA_CACHE}" ]; then
+				__MESA_CACHE="${HOME}/.cache/mesa"
+			fi
+		fi
+		if [ -d "${__MESA_CACHE}" ]; then
+			echo "Clearing Mesa cache at \"${__MESA_CACHE}\""
+			rm -r "${__MESA_CACHE}"
+			mkdir -p "${__MESA_CACHE}"
+		fi
+
+		# Clear AMD Closed cache, using location as of 17.30
+		__GPUPRO_CACHE="${HOME}/.AMD/GLCache"
+		if [ -d "${__GPUPRO_CACHE}" ]; then
+			echo "Clearing AMD GPUPRO cache at \"${__GPUPRO_CACHE}\""
+			rm -r "${__GPUPRO_CACHE}"
+			mkdir -p "${__GPUPRO_CACHE}"
+		fi
+
 	export LD_LIBRARY_PATH="${OLD_LD_LIBRARY_PATH}"
 fi
 
@@ -200,6 +291,12 @@ if [ "${FERAL_SYSTEM_ASOUND}" = 1 ]; then
 		LIBASOUND_LIBDIR="/usr/lib"
 	fi
 	LD_PRELOAD_ADDITIONS="${LIBASOUND_LIBDIR}/${LIBASOUND_DYLIB}:${LD_PRELOAD_ADDITIONS}"
+fi
+
+# Set up Vulkan renderdoc if asked
+if [ "${FERAL_USE_RENDERDOC}" = 1 ]; then
+	export VK_INSTANCE_LAYERS="${VK_INSTANCE_LAYERS}:VK_LAYER_RENDERDOC_Capture"
+	export ENABLE_VULKAN_RENDERDOC_CAPTURE=1
 fi
 
 # Sometimes games may need an extra set of variables
@@ -279,24 +376,49 @@ if echo "${LIBGL_TARGET}" | grep -q "\.so\.[0-9][0-9][0-9]\.[0-9][0-9]"; then
 	fi
 fi
 
-# Legacy support: Replace the older PS4 mapping with the newer one if we're running a new enough kernel
-# See https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/drivers/hid/hid-sony.c?id=ac797b95f53276c132c51d53437e38dd912413d7
-KERNEL=$(uname -r)
-KERNEL_MAJOR=$(echo "$KERNEL" | cut -d. -f1)
-KERNEL_MINOR=$(echo "$KERNEL" | cut -d. -f2)
-OLD_MAPPING="a:b1,b:b2,back:b13,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b12,leftshoulder:b4,leftstick:b10,lefttrigger:a3,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b11,righttrigger:a4,rightx:a2,righty:a5,start:b9,x:b0,y:b3"
-NEW_MAPPING="a:b0,b:b1,back:b8,dpdown:h0.4,dpleft:h0.8,dpright:h0.2,dpup:h0.1,guide:b10,leftshoulder:b4,leftstick:b11,lefttrigger:a2,leftx:a0,lefty:a1,rightshoulder:b5,rightstick:b12,righttrigger:a5,rightx:a3,righty:a4,start:b9,x:b3,y:b2"
-if [ "$KERNEL_MAJOR" -gt 4 ] || [ "$KERNEL_MAJOR" = 4 ] && [ "$KERNEL_MINOR" -gt 9 ]; then
-	if [ -e "${GAMEROOT}/share/inputdevices.json" ]; then
-		sed -i "s/${OLD_MAPPING}/${NEW_MAPPING}/g" "${GAMEROOT}/share/inputdevices.json"
-	elif [ -e "${GAMEROOT}/share/controllermapping.txt" ]; then
-		sed -i "s/${OLD_MAPPING}/${NEW_MAPPING}/g" "${GAMEROOT}/share/controllermapping.txt"
+# Workaround for Ubuntu NVIDIA driver packaging issue:
+# https://bugs.launchpad.net/ubuntu/+source/nvidia-graphics-drivers-384/+bug/1726809
+#
+# Run a tool to determine whether we can enumerate available Vulkan devices. If
+# not, check if the Vulkan ICD configuration looks to be affected, and if so,
+# try again with an overridden config with a workaround applied.
+#
+# Don't do anything if the user is manually overriding the Vulkan ICD path.
+if [ -z "${VK_ICD_FILENAMES}" ]; then
+	CHECK_VULKAN_BINARY="${GAMEROOT}/bin/CheckVulkanDriver"
+	if ! "${CHECK_VULKAN_BINARY}"; then
+		if [ -e /etc/vulkan/icd.d/nvidia_icd.json ]; then
+			VULKAN_ICD_JSON=/etc/vulkan/icd.d/nvidia_icd.json
+		elif [ -e /usr/share/vulkan/icd.d/nvidia_icd.json ]; then
+			VULKAN_ICD_JSON=/usr/share/vulkan/icd.d/nvidia_icd.json
+		fi
+
+		if [ -n "${VULKAN_ICD_JSON}" ]; then
+			if grep -q "libGL.so.1" "${VULKAN_ICD_JSON}"; then
+				# Try substituting in the GLVND library path to see if this
+				# works instead.
+				export VK_ICD_FILENAMES="$(mktemp --tmpdir nvidia_icd.XXXXXX.json)"
+				sed 's/libGL\.so\.1/libGLX_nvidia.so.0/' "${VULKAN_ICD_JSON}" > "${VK_ICD_FILENAMES}"
+				if ! "${CHECK_VULKAN_BINARY}"; then
+					# Still doesn't work, revert back to default.
+					unset VK_ICD_FILENAMES
+				fi
+			fi
+		fi
 	fi
 fi
 
 # ====================================================================
 # Run the game
-cd "${GAMEROOT}/bin" && ${GAME_LAUNCH_PREFIX} "${GAMEROOT}/bin/${FERAL_GAME_NAME}" "$@"
+cd "${GAMEROOT}/bin"
+
+# Use the signalwrapper if it exists
+if [ -e "signalwrapper" ]; then
+	GAME_SIGNAL_WRAPPER="./signalwrapper"
+fi
+
+# Launch the game with all the arguments
+${GAME_LAUNCH_PREFIX} ${GAME_SIGNAL_WRAPPER} "${GAMEROOT}/bin/${FERAL_GAME_NAME}" "$@"
 RESULT=$?
 
 # ====================================================================
