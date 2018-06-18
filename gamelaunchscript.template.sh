@@ -12,7 +12,7 @@
 #
 # ====================================================================
 # Generic Feral Launcher script
-# Version 2.9.0
+# Version 2.9.1
 
 # If you have useful edits made for unsupported distros then please
 # visit <https://github.com/FeralInteractive/ferallinuxscripts>
@@ -164,6 +164,13 @@ unset LD_PRELOAD
 # used for debugging
 # Uncomment this line if LC_ALL was needed (sometimes on openSUSE)
 unset LC_ALL
+
+# Sometimes locale specific behaviours can cause issues - try setting
+# the locale to C as a "safe" option
+# LANG=C
+# export LANG
+# LC_ALL=C
+# export LC_ALL
 
 # Try and set up SSL paths for all distros, due to steam runtime bug #52
 # The value is used by our version of libcurl
