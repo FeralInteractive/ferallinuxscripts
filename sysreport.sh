@@ -153,23 +153,6 @@ done
 
 
 # --------------------------------------------------------------------------------
-# System info utilities - game environment
-# --------------------------------------------------------------------------------
-# "ldd -v $BINARYFILES"    - Check which libraries are likely loaded by binaries
-BINARYFILES="$(find "$INSTALLDIR/bin" -type f -executable)"
-set -- "ldd -v ${BINARYFILES}"
-for CMD do
-	output_text "$CMD"
-	echo "${TEXT_AREA}" >> "$OUTFILE"
-	env LD_LIBRARY_PATH="${SAVED_LD_LIBRARY_PATH}" $CMD 2>&1 | tail -n 1000 | tee -a "$OUTFILE" | 
-	if [ "$(wc -l)" = "1000" ]; then 
-		echo "...truncated to last 1000 lines..." >> "$OUTFILE" 
-	fi
-	echo "</textarea>" >> "$OUTFILE"
-done
-
-
-# --------------------------------------------------------------------------------
 # Graphics info utilities
 # --------------------------------------------------------------------------------
 # "glxinfo -l"         - Detailed opengl information
@@ -190,6 +173,7 @@ for CMD do
 	fi
 	echo "</textarea>" >> "$OUTFILE"
 done
+
 
 # --------------------------------------------------------------------------------
 # System configuration files
@@ -223,6 +207,24 @@ for FILE do
 		output_text "$FILE not found"
 	fi
 done
+
+
+# --------------------------------------------------------------------------------
+# System info utilities - game environment
+# --------------------------------------------------------------------------------
+# "ldd -v"    - Check which libraries are likely loaded by binaries
+cd "$INSTALLDIR" || exit
+for BINARYFILE in bin/* lib/*
+do
+	output_text "ldd -v $BINARYFILE"
+	echo "${TEXT_AREA}" >> "$OUTFILE"
+	env LD_LIBRARY_PATH="${SAVED_LD_LIBRARY_PATH}" ldd -v "$BINARYFILE" 2>&1 | tail -n 1000 | tee -a "$OUTFILE" | 
+	if [ "$(wc -l)" = "1000" ]; then 
+		echo "...truncated to last 1000 lines..." >> "$OUTFILE" 
+	fi
+	echo "</textarea>" >> "$OUTFILE"
+done
+
 
 
 # --------------------------------------------------------------------------------
