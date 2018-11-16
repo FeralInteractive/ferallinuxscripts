@@ -111,15 +111,19 @@ fi
 echo "</p>" >> "$OUTFILE"
 
 # --------------------------------------------------------------------------------
-# "uname -a"           - System and kernel version info
-# "lsb_release -a"     - More specific system info
-# "lspci -v"           - Info on current hardware
-# "lsusb -v"           - Info on USB devices
-# "env"                - Check against steam runtime environment to catch oddities
-# "top -b -n 1"        - Running processes (useful to detect CPU/GPU hogs or zombie processes)
-# "setxkbmap -query"   - Information on current keyboard map/modes
-# "curl-config --ca"   - Location of the certificates bundle
-# "cat $CPUFILES"      - Show CPU governor setting
+# System info utilities - native envirnoment
+# --------------------------------------------------------------------------------
+# "uname -a"               - System and kernel version info
+# "lsb_release -a"         - More specific system info
+# "lspci -v"               - Info on current hardware
+# "lsusb -v"               - Info on USB devices
+# "env"                    - Check against steam runtime environment to catch oddities
+# "top -b -n 1"            - Running processes (useful to detect CPU/GPU hogs or zombie processes)
+# "setxkbmap -query"       - Information on current keyboard map/modes
+# "curl-config --ca"       - Location of the certificates bundle
+# "pulseaudio --dump-conf" - Audio configuration
+# "pulseaudio --check -v"  - Audio state
+# "cat $CPUFILES"          - Show CPU governor setting
 CPUFILES="/sys/devices/system/cpu/cpu*/cpufreq/scaling_governor"
 echo "<hr><h2 id=\"programs\">Program Outputs</h2>" >> "$OUTFILE"
 set -- "uname -a" \
@@ -134,6 +138,8 @@ set -- "uname -a" \
 	"df -h" \
 	"setxkbmap -query" \
 	"curl-config --ca" \
+	"pulseaudio --dump-conf" \
+	"pulseaudio --check -v" \
 	"cat ${CPUFILES}"
 for CMD do
 	output_text "$CMD"
@@ -146,6 +152,25 @@ for CMD do
 done
 
 
+# --------------------------------------------------------------------------------
+# System info utilities - game environment
+# --------------------------------------------------------------------------------
+# "ldd -v $BINARYFILES"    - Check which libraries are likely loaded by binaries
+BINARYFILES="$(find "$INSTALLDIR/bin" -type f -executable)"
+set -- "ldd -v ${BINARYFILES}"
+for CMD do
+	output_text "$CMD"
+	echo "${TEXT_AREA}" >> "$OUTFILE"
+	env LD_LIBRARY_PATH="${SAVED_LD_LIBRARY_PATH}" $CMD 2>&1 | tail -n 1000 | tee -a "$OUTFILE" | 
+	if [ "$(wc -l)" = "1000" ]; then 
+		echo "...truncated to last 1000 lines..." >> "$OUTFILE" 
+	fi
+	echo "</textarea>" >> "$OUTFILE"
+done
+
+
+# --------------------------------------------------------------------------------
+# Graphics info utilities
 # --------------------------------------------------------------------------------
 # "glxinfo -l"         - Detailed opengl information
 # "vulkaninfo"         - Detailed vulkan information
@@ -166,6 +191,8 @@ for CMD do
 	echo "</textarea>" >> "$OUTFILE"
 done
 
+# --------------------------------------------------------------------------------
+# System configuration files
 # --------------------------------------------------------------------------------
 # "/etc/*-release"                   - Info on system release version
 # "/etc/X11/default-display-manager" - X11 display manager info
